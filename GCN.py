@@ -5,7 +5,7 @@ import torch
 from torch.nn import Parameter
 from torch.autograd import Variable
 import torch.nn.functional as F
-from utils import _pair
+from utils import _pair, _ntuple
 from torch.nn.modules.conv import _ConvNd
 
 class MConv(_ConvNd):
@@ -27,13 +27,15 @@ class MConv(_ConvNd):
 								[torch.ones(kernel_size),
 								torch.ones(kernel_size) * 2,
 								torch.ones(kernel_size) * 3,
-								torch.ones(kernel_size) * 4]))
+								torch.ones(kernel_size) * 4]),
+								)#requires_grad=False)
+
 		# print self.weight, self.bias
 		# print self.MFilters
 
 	def forward(self, x):
 		if self.expand:
-			x = do_expanding(x)
+			x = self.do_expanding(x)
 		if x.dim() != 5:
 			raise ValueError('Experted input dim: 5,but got a {} dim\'s Tensor '.format(x.dim()))
 		if x.size(1) != self.M:
@@ -52,17 +54,34 @@ class MConv(_ConvNd):
 				self.padding, self.dilation, self.groups))
 		return torch.stack(y, 1)
 
+	def do_expanding(self, x):
+		if x.dim() == 5:
+			raise ValueError('No need to do expanding')
+		_list = []
+		for _ in range(self.M):
+			_list.append(x)
+		# print _list
+		# print torch.stack(_list, 1)
+		return torch.stack(_list, 1)
+
 def main():
-	mconv = MConv(2, 2, 3, padding=1, stride=1)
+	mconv = MConv(2, 2, 3, padding=1, stride=1, M=4)
 	print 'Parameters:',list(mconv.parameters())
 	print 'Weight grad:',mconv.weight.grad
-	raw_input = Variable(torch.randn(3,4,2,9,9))
+	raw_input = Variable(torch.ones(3,4,2,9,9))
 	y = mconv(raw_input)
 	print 'Output Size:', y.size()
 	z = torch.mean(y)
 	z.backward()
 	print 'Weight grad after BP:',mconv.weight.grad
+	print 'MFilters grad', mconv.MFilters.grad
 
+def expand_test():
+	mconv = MConv(2, 2, 3, padding=1, stride=1, M=4, expand=True)
+	null_input = Variable(torch.randn(1,2,3,3))
+	# print null_input 
+	y = mconv(null_input)
 
 if __name__ == '__main__':
 	main()
+	expand_test()
