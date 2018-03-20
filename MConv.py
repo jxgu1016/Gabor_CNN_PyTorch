@@ -5,12 +5,11 @@ import torch
 from torch.nn import Parameter
 from torch.autograd import Variable
 import torch.nn.functional as F
-from utils import _pair, _ntuple
+from utils import _pair
 from torch.nn.modules.conv import _ConvNd
 
 class MConv(_ConvNd):
 	'''
-	CVPR2018: Modulated Covolutional Networks
 	'''
 	def __init__(self, in_channels, out_channels, kernel_size, M=4, stride=1,
 					padding=0, dilation=1, groups=1, bias=True, expand=False):
@@ -23,12 +22,12 @@ class MConv(_ConvNd):
             False, _pair(0), groups, bias)
 		self.expand = expand
 		self.M = M
-		self.MFilters = Variable(torch.stack(
-								[torch.ones(kernel_size),
-								torch.ones(kernel_size) * 2,
-								torch.ones(kernel_size) * 3,
-								torch.ones(kernel_size) * 4]),
-								)#requires_grad=False)
+		self.MFilters = Parameter(torch.stack(
+								[torch.ones(kernel_size),] * M))
+
+		# self.MFilters = Variable(torch.stack(
+		# 						[torch.Tensor(...),
+		# 						...]))
 
 		# print self.weight, self.bias
 		# print self.MFilters
@@ -57,9 +56,7 @@ class MConv(_ConvNd):
 	def do_expanding(self, x):
 		if x.dim() == 5:
 			raise ValueError('No need to do expanding')
-		_list = []
-		for _ in range(self.M):
-			_list.append(x)
+		_list = [x, ] * self.M
 		# print _list
 		# print torch.stack(_list, 1)
 		return torch.stack(_list, 1)
@@ -82,6 +79,15 @@ def expand_test():
 	# print null_input 
 	y = mconv(null_input)
 
+def visulize():
+	from utils import visualize_graph
+	from tensorboardX import SummaryWriter
+	model = MConv(3, 5, 3)
+	writer = SummaryWriter()
+	visualize_graph(model, writer, input_size=(1, 4, 3, 32, 32))
+	writer.close()
+
 if __name__ == '__main__':
 	main()
-	expand_test()
+	# expand_test()
+	# visulize()
