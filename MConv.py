@@ -66,6 +66,8 @@ class MConv(_ConvNd):
 	'''
 	def __init__(self, in_channels, out_channels, kernel_size, M=4, stride=1,
 					padding=0, dilation=1, groups=1, bias=True, expand=False):
+		if groups != 1:
+			raise ValueError('Group-conv not supported!')
 		kernel_size = (M, ) + _pair(kernel_size)
 		stride = _pair(stride)
 		padding = _pair(padding)
@@ -78,11 +80,12 @@ class MConv(_ConvNd):
 		self.out_channels = out_channels
 		self.expand = expand
 		self.M = M
-		self.MFilters = Parameter(torch.stack(
-								[torch.ones(kernel_size),] * M)) 
-		# self.MFilters = Parameter(torch.randn(M, M, kernel_size[0], kernel_size[0]))
+		self.need_bias = bias
+		# self.MFilters = Parameter(torch.stack([torch.ones(kernel_size),] * M)) 
+		self.MFilters = Parameter(torch.randn(M, M, self.kernel_size, self.kernel_size))
 		# print self.weight.size()
 		# print self.MFilters.size()
+		print self.bias
 
 	def forward(self, x):
 		if self.expand:
@@ -94,7 +97,7 @@ class MConv(_ConvNd):
 		# print y
 		new_weight = torch.cat(y, 0)
 		# print new_weight.size()
-		new_bias = torch.cat([self.bias,] * self.M, 0)
+		new_bias = torch.cat([self.bias,] * self.M, 0) if self.need_bias else self.bias
 		# print new_bias
 		return F.conv2d(x, new_weight, new_bias, self.stride,
 				self.padding, self.dilation, self.groups)
@@ -105,10 +108,10 @@ class MConv(_ConvNd):
 
 def main():
 	M = 4
-	mconv = MConv(2, 3, 3, padding=1, stride=1, M=4)
+	mconv = MConv(2, 3, 3, padding=1, stride=1, M=4, bias=True, groups=1)
 	print 'Parameters:',list(mconv.parameters())
 	print 'Weight grad:',mconv.weight.grad
-	raw_input = Variable(torch.ones(3, 2 * M,9,9))
+	raw_input = Variable(torch.ones(1, 2 * M, 6, 6))
 	y = mconv(raw_input)
 	print 'Output Size:', y.size()
 	z = torch.mean(y)
