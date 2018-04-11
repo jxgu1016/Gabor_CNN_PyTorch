@@ -3,25 +3,50 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-from MConv import MConv 
+from MConv import GConv 
 
 class GCN(nn.Module):
-    def __init__(self):
+    def __init__(self, channel=4):
         super(GCN, self).__init__()
+        self.channel = channel
         self.model = nn.Sequential(
+            GConv(1, 10, 5, padding=2, stride=1, M=channel, nScale=1, bias=False, expand=True),
+            nn.BatchNorm2d(10*channel),
+            nn.ReLU(inplace=True),
 
+            GConv(10, 20, 5, padding=2, stride=1, M=channel, nScale=2, bias=False),
+            nn.BatchNorm2d(20*channel),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2,2),
+
+            GConv(20, 40, 5, padding=0, stride=1, M=channel, nScale=3, bias=False),
+            nn.BatchNorm2d(40*channel),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2,2),
+
+            GConv(40, 80, 5, padding=0, stride=1, M=channel, nScale=4, bias=False),
+            nn.BatchNorm2d(80*channel),
+            nn.ReLU(inplace=True),
         )
-        self.fc = nn.Linear(1024, 10)
+        self.fc1 = nn.Linear(80, 1024)
+        self.relu = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout(p=0.5)
+        self.fc2 = nn.Linear(1024, 10)
 
     def forward(self, x):
         x = self.model(x)
-        x = x.view(-1, 1024)
-        x = self.fc(x)
+        x = x.view(-1, self.channel, 80)
+        x = torch.max(x, 1)[0]
+        # x = x.view(-1, 80 * self.channel)
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+        x = self.fc2(x)
         return x
 
 def get_network_fn(name):
     networks_zoo = {
-    'gcn': GCN(),
+    'gcn': GCN(channel=4),
     }
     if name is '':
         raise ValueError('Specify the network to train. All networks available:{}'.format(networks_zoo.keys()))
@@ -30,45 +55,12 @@ def get_network_fn(name):
     return networks_zoo[name]
 
 def test():
-    # model = TaylorNet()
-    # model = TaylorNet_v2()
-    # print model
-    # print list(model.parameters())
-
-    # tay = TaylorOperation(4,8)
-    # print tay.alpha.data[0,0,0,0]
-    # a = torch.Tensor([
-    #     [
-    #     [[1,1], [1,1]],
-    #     [[2,2], [2,2]],
-    #     [[3,3], [3,3]],
-    #     [[4,4], [4,4]],
-    #     ],
-    #     [
-    #     [[11,11], [11,11]],
-    #     [[22,22], [22,22]],
-    #     [[33,33], [33,33]],
-    #     [[44,44], [44,44]],
-    #     ],
-    #     ])
-    # a = Variable(a)
-    # print a, a.size()
-    # b = tay(a)
-    # print b
-    # print list(tay.parameters())
-
-    # tay2 = TaylorOperation_v2(4)
-    # print list(tay2.parameters())
-    # b = tay2(a)
-    # print b
-    # a = Variable(torch.randn(64,3,32,32))
-    # from utils import get_parameters_size
-    # model = get_network_fn('inception_taylornet',gama=1.0)
-    # print get_parameters_size(model)
+    a = Variable(torch.randn(2,1,28,28))
     model = get_network_fn('gcn')
     # print get_parameters_size(model)/1e6
-    # print model
-    # model(a)
+    print model
+    b = model(a)
+    print b.size()
 
 
 
