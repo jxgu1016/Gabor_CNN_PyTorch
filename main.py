@@ -1,5 +1,6 @@
 from __future__ import division
 import os
+import time
 import argparse
 import torch
 from torch.autograd import Variable
@@ -50,7 +51,6 @@ iteration = 0
 # Prepare the CIFAR10 dataset
 normalize = transforms.Normalize((0.1307,), (0.3081,))
 train_transform = transforms.Compose([
-    transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     normalize
 ])
@@ -77,7 +77,8 @@ except:
 	print('\nNetwork Visualization Failed! But the training procedure continue.')
 
 # optimizer = optim.Adadelta(model.parameters(), lr=args.lr, rho=0.9, eps=1e-06, weight_decay=3e-05)
-optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=3e-05)
+# optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=3e-05)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=3e-05)
 scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
 criterion = nn.CrossEntropyLoss()
 
@@ -99,6 +100,7 @@ if args.pretrained:
 def train(epoch):
     model.train()
     global iteration
+    st = time.time()
     for batch_idx, (data, target) in enumerate(train_loader):
         iteration += 1
         if use_cuda:
@@ -117,6 +119,8 @@ def train(epoch):
                 100. * batch_idx / len(train_loader), loss.data[0], prec1))
             writer.add_scalar('Loss/Train', loss.data[0], iteration)
             writer.add_scalar('Accuracy/Train', prec1, iteration)
+    epoch_time = time.time() - st
+    print('Epoch time:{:0.2f}s'.format(epoch_time))
     scheduler.step()
 
 def test(epoch):
