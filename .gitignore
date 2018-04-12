@@ -101,3 +101,4 @@ ENV/
 .DS_Store
 runs*
 MConv_3DModulate.py
+*.json

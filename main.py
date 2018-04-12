@@ -13,16 +13,16 @@ from tensorboardX import SummaryWriter
 from net_factory import get_network_fn
 
 
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+parser = argparse.ArgumentParser(description='PyTorch GCN MNIST Training')
 parser.add_argument('--epochs', default=50, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
+parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N', help='mini-batch size (default: 64)')
-parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
@@ -34,8 +34,8 @@ parser.add_argument('--pretrained', default='', type=str, metavar='PATH',
                     help='path to pretrained checkpoint (default: none)')
 parser.add_argument('--gpu', default=-1, type=int,
                     metavar='N', help='GPU device ID (default: -1)')
-parser.add_argument('--dataset_dir', default='../CIFAR10', type=str, metavar='PATH',
-                    help='path to dataset (default: ../CIFAR10)')
+parser.add_argument('--dataset_dir', default='../MNIST', type=str, metavar='PATH',
+                    help='path to dataset (default: ../MNIST)')
 parser.add_argument('--comment', default='', type=str, metavar='INFO',
                     help='Extra description for tensorboard')
 parser.add_argument('--model', default='', type=str, metavar='NETWORK',
@@ -44,14 +44,12 @@ args = parser.parse_args()
 
 use_cuda = (args.gpu >= 0) and torch.cuda.is_available()
 best_prec1 = 0
-writer = SummaryWriter(comment='_'+args.model+'_gama'+str(args.gama)+'_'+args.comment)
+writer = SummaryWriter(comment='_'+args.model+'_'+args.comment)
 iteration = 0
 
 # Prepare the CIFAR10 dataset
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+normalize = transforms.Normalize((0.1307,), (0.3081,))
 train_transform = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     normalize
@@ -59,9 +57,9 @@ train_transform = transforms.Compose([
 test_transform = transforms.Compose([transforms.ToTensor(), normalize])
 
 
-train_dataset = datasets.CIFAR10(root=args.dataset_dir, train=True, 
+train_dataset = datasets.MNIST(root=args.dataset_dir, train=True, 
     				download=True, transform=train_transform)
-test_dataset = datasets.CIFAR10(root=args.dataset_dir, train=False, 
+test_dataset = datasets.MNIST(root=args.dataset_dir, train=False, 
                     download=True,transform=test_transform)
 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size,
@@ -74,13 +72,13 @@ model = get_network_fn(args.model)
 print(model)
 # Try to visulize the model
 try:
-	visualize_graph(model, writer, input_size=(1, 3, 32, 32))
+	visualize_graph(model, writer, input_size=(1, 1, 28, 28))
 except:
 	print('\nNetwork Visualization Failed! But the training procedure continue.')
 
-optimizer = optim.Adam(model.parameters(), lr=args.lr)
+# optimizer = optim.Adadelta(model.parameters(), lr=args.lr, rho=0.9, eps=1e-06, weight_decay=3e-05)
+optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=3e-05)
 scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
-# scheduler = MultiStepLR(optimizer, milestones=[60,120,160], gamma=0.2)
 criterion = nn.CrossEntropyLoss()
 
 if use_cuda:
