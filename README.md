@@ -19,5 +19,5 @@ cd demo
 python main.py --model gcn (--gpu 0)
 ```
 
-
+## Please cite:
 @article{Luan2016GCN, title={Gabor Convolutional Networks}, author={Luan, Shangzhen and Zhang, Baochang and Chen, Chen and Cao, Xianbin and Han, Jungong and Liu, Jianzhuang}, year={2017}, }
