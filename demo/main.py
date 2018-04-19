@@ -35,7 +35,7 @@ parser.add_argument('--pretrained', default='', type=str, metavar='PATH',
                     help='path to pretrained checkpoint (default: none)')
 parser.add_argument('--gpu', default=-1, type=int,
                     metavar='N', help='GPU device ID (default: -1)')
-parser.add_argument('--dataset_dir', default='../MNIST', type=str, metavar='PATH',
+parser.add_argument('--dataset_dir', default='../../MNIST', type=str, metavar='PATH',
                     help='path to dataset (default: ../MNIST)')
 parser.add_argument('--comment', default='', type=str, metavar='INFO',
                     help='Extra description for tensorboard')
@@ -48,13 +48,18 @@ best_prec1 = 0
 writer = SummaryWriter(comment='_'+args.model+'_'+args.comment)
 iteration = 0
 
-# Prepare the CIFAR10 dataset
+# Prepare the MNIST dataset
 normalize = transforms.Normalize((0.1307,), (0.3081,))
 train_transform = transforms.Compose([
+    # transforms.Scale(32),
     transforms.ToTensor(),
-    normalize
-])
-test_transform = transforms.Compose([transforms.ToTensor(), normalize])
+    normalize,
+    ])
+test_transform = transforms.Compose([
+    # transforms.Scale(32),
+    transforms.ToTensor(), 
+    normalize,
+    ])
 
 
 train_dataset = datasets.MNIST(root=args.dataset_dir, train=True, 
@@ -112,7 +117,6 @@ def train(epoch):
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        # print list(model.parameters())
         if batch_idx % args.print_freq == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),

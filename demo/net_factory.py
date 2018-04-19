@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-from MConv import GConv 
+from gcn.modules import GConv 
 
 class GCN(nn.Module):
     def __init__(self, channel=4):
@@ -35,14 +35,17 @@ class GCN(nn.Module):
 
     def forward(self, x):
         x = self.model(x)
-        x = x.view(-1, self.channel, 80)
-        x = torch.max(x, 1)[0]
-        # x = x.view(-1, 80 * self.channel)
+        # x = x.view(-1, self.channel, 80)
+        # x = torch.max(x, 1)[0]
+        ## x = x.view(-1, 80 * self.channel)
+        x = x.view(-1, 80, self.channel)
+        x = torch.max(x, 2)[0]
         x = self.fc1(x)
         x = self.relu(x)
         x = self.dropout(x)
         x = self.fc2(x)
         return x
+
 
 def get_network_fn(name):
     networks_zoo = {
