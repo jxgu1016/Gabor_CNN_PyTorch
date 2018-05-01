@@ -1,4 +1,4 @@
-# WACV2018: Gabor Convolutional Networks
+# WACV2018/TIP: Gabor Convolutional Networks
 
 Official PyTorch implementation of Gabor CNN. 
 But all the results in the paper are based on [Torch 7](https://github.com/bczhangbczhang/Gabor-Convolutional-Networks).
