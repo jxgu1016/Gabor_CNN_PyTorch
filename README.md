@@ -9,7 +9,12 @@ These two implementations are sharing the same infrastructure level code.
 ```
 git clone https://github.com/jxgu1016/Gabor_CNN_PyTorch
 cd Gabor_CNN_PyTorch
-sh intall.sh
+sh install.sh
+```
+
+## Install third party tool
+```
+pip install tensorboardX
 ```
 
 ## Run MNIST demo
