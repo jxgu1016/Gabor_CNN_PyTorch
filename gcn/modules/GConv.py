@@ -64,7 +64,7 @@ class MConv(_ConvNd):
 		for i in range(bias.size()):
 			for _ in range(self.M):
 				index.append(i)
-		index = torch.LongTensor(index).cuda() if x.is_cuda else torch.LongTensor(index)
+		index = torch.LongTensor(index).cuda() if bias.is_cuda else torch.LongTensor(index)
 		index = Variable(index)
 		return bias.index_select(0, index)
 
