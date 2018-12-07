@@ -1,14 +1,28 @@
-# coding=utf-8
 from __future__ import division
 import math
 import torch
-import torch.nn as nn
-from torch.nn import Parameter
-from torch.autograd import Variable
+from torch import nn
 import torch.nn.functional as F
-from .utils import _pair
+from torch.autograd import Function
+from torch.nn.modules.utils import _pair
 from torch.nn.modules.conv import _ConvNd
-from gcn.functions import GOF_Function, my_GOF_Function
+# from torch.autograd.function import once_differentiable # FIXME
+
+from gcn import _C
+
+class GOF_Function(Function):
+    @staticmethod
+    def forward(ctx, weight, gaborFilterBank):
+        ctx.save_for_backward(weight, gaborFilterBank)
+        output = _C.gof_forward(weight, gaborFilterBank)
+        return output
+
+    @staticmethod
+    # @once_differentiable # FIXME
+    def backward(ctx, grad_output):
+        weight, gaborFilterBank = ctx.saved_tensors
+        grad_input = _C.gof_backward(gaborFilterBank, grad_output)
+        return grad_input, None 
 
 class MConv(_ConvNd):
 	'''
@@ -32,21 +46,14 @@ class MConv(_ConvNd):
 		self.GOF_Function = GOF_Function.apply
 		# self.GOF_Function = my_GOF_Function()
 
-		# print self.weight.size()
-		# print self.MFilters.size()
-		# print self.bias
-
 	def generate_MFilters(self, nScale, kernel_size):
-		# self.MFilters = Parameter(torch.randn(*kernel_size))
 		raise NotImplementedError
 
 	def forward(self, x):
 		if self.expand:
 			x = self.do_expanding(x)
 		new_weight = self.GOF_Function(self.weight, self.MFilters)
-		# print new_weight.size()
 		new_bias = self.expand_bias(self.bias) if self.need_bias else self.bias
-		# print new_bias
 		return F.conv2d(x, new_weight, new_bias, self.stride,
 				self.padding, self.dilation, self.groups)
 
@@ -56,7 +63,6 @@ class MConv(_ConvNd):
 			for _ in range(self.M):
 				index.append(i)
 		index = torch.LongTensor(index).cuda() if x.is_cuda else torch.LongTensor(index)
-		index = Variable(index)
 		return x.index_select(1, index)
 	
 	def expand_bias(self, bias):
@@ -65,7 +71,6 @@ class MConv(_ConvNd):
 			for _ in range(self.M):
 				index.append(i)
 		index = torch.LongTensor(index).cuda() if bias.is_cuda else torch.LongTensor(index)
-		index = Variable(index)
 		return bias.index_select(0, index)
 
 class GConv(MConv):
@@ -76,7 +81,6 @@ class GConv(MConv):
 					padding=0, dilation=1, groups=1, bias=True, expand=False):
 		super(GConv, self).__init__(in_channels, out_channels, kernel_size, M, nScale, stride,
 					padding, dilation, groups, bias, expand)
-		# print self.MFilters
 
 	def generate_MFilters(self, nScale, kernel_size):
 		# To generate Gabor Filters
@@ -110,37 +114,27 @@ def getGaborFilterBank(nScale, M, h, w):
 		gfilter_real = torch.ones(M, h, w)
 	return gfilter_real
 
-def main():
-	M = 4
-	mconv = GConv(2, 3, 3, padding=1, stride=1, M=4, nScale=3, bias=True, groups=1).double().cuda()
-	# mconv = MConv(2, 3, 3, padding=1, stride=1, M=4, bias=True, groups=1)
-	print 'MFilters:', mconv.MFilters
-	# print 'Parameters:',list(mconv.parameters())
-	print 'Weight grad:',mconv.weight.grad
-	raw_input = Variable(torch.ones(1, 2 * M, 6, 6).double().cuda())
-	y = mconv(raw_input)
-	print 'Output Size:', y.size()
-	z = torch.mean(y)
-	z.backward()
-	print 'Weight grad after BP:',mconv.weight.grad
-	print 'MFilters grad', mconv.MFilters.grad
 
-def expand_test():
-	mconv = GConv(2, 2, 3, padding=1, stride=1, M=4, expand=True)
-	null_input = Variable(torch.Tensor([[[[1,1],[1,1]],[[2,2],[2,2]]]]))
-	print null_input 
-	y = mconv(null_input)
-	print y
+####################################################################
+class my_GOF_Function(nn.Module):
+    def __init__(self):
+        super(my_GOF_Function, self).__init__()
 
-def visulize():
-	from utils import visualize_graph
-	from tensorboardX import SummaryWriter
-	model = GConv(3, 5, 3)
-	writer = SummaryWriter()
-	visualize_graph(model, writer, input_size=(1, 12, 32, 32))
-	writer.close()
-
-if __name__ == '__main__':
-	main()
-	# expand_test()
-	# visulize()
+    def forward(self, weight, gof):
+        nOout = weight.size(0)
+        nIn = weight.size(1)
+        nChannel = weight.size(2)
+        kH = weight.size(3)
+        kW = weight.size(4)
+        weight = weight.view(nOout, -1, kH, kW)
+        y = []
+        for i in range(gof.size(0)):
+            Q = weight * gof[i]
+            y.append(Q)
+        index = []
+        group = range(0,(nChannel-1)*nOout+1,nOout)
+        for j in range(nOout):
+            index.extend([k+j for k in group])
+        # print(index)
+        idx = torch.LongTensor(index).cuda() if weight.is_cuda else torch.LongTensor(index)
+        return torch.cat(y, 0).index_select(0, idx)
