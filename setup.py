@@ -1,23 +1,68 @@
 #!/usr/bin/env python
+
+import glob
 import os
-from setuptools import setup, find_packages
+
+import torch
+from setuptools import find_packages
+from setuptools import setup
+from torch.utils.cpp_extension import CUDA_HOME
+from torch.utils.cpp_extension import CppExtension
+from torch.utils.cpp_extension import CUDAExtension
+
+requirements = ["torch", "torchvision"]
+
+
+def get_extensions():
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    extensions_dir = os.path.join(this_dir, "gcn", "csrc")
+
+    main_file = glob.glob(os.path.join(extensions_dir, "*.cpp"))
+    source_cpu = glob.glob(os.path.join(extensions_dir, "cpu", "*.cpp"))
+    source_cuda = glob.glob(os.path.join(extensions_dir, "cuda", "*.cu"))
+
+    sources = main_file + source_cpu
+    extension = CppExtension
+
+    extra_compile_args = {"cxx": []}
+    define_macros = []
+
+    if torch.cuda.is_available() and CUDA_HOME is not None:
+        extension = CUDAExtension
+        sources += source_cuda
+        define_macros += [("WITH_CUDA", None)]
+        extra_compile_args["nvcc"] = [
+            "-DCUDA_HAS_FP16=1",
+            "-D__CUDA_NO_HALF_OPERATORS__",
+            "-D__CUDA_NO_HALF_CONVERSIONS__",
+            "-D__CUDA_NO_HALF2_OPERATORS__",
+        ]
+
+    sources = [os.path.join(extensions_dir, s) for s in sources]
+
+    include_dirs = [extensions_dir]
+
+    ext_modules = [
+        extension(
+            "gcn._C",
+            sources,
+            include_dirs=include_dirs,
+            define_macros=define_macros,
+            extra_compile_args=extra_compile_args,
+        )
+    ]
+
+    return ext_modules
+
 
 setup(
     name="gcn",
-    version="1.0",
-    description="Gabor Convolutional Networks, WACV2017",
-    url="https://github.com/jxgu1016/GCN_PyTorch/tree/para_product",
-    author="Jiaxin Gu",
-    author_email="jxgu1016@gmail.com",
-    # Require cffi.
-    install_requires=["cffi>=1.0.0"],
-    setup_requires=["cffi>=1.0.0"],
-    # Exclude the build files.
-    packages=find_packages(exclude=["build"]),
-    # Package where to put the extensions. Has to be a prefix of build.py.
-    ext_package="",
-    # Extensions to compile.
-    cffi_modules=[
-        os.path.join(os.path.dirname(__file__), "build.py:ffi")
-    ],
+    version="0.1",
+    author="gujiaxin",
+    url="https://github.com/jxgu1016/Gabor_CNN_PyTorch",
+    description="Gabor Convolutional Networks in pytorch",
+    packages=find_packages(),
+    # install_requires=requirements,
+    ext_modules=get_extensions(),
+    cmdclass={"build_ext": torch.utils.cpp_extension.BuildExtension},
 )
