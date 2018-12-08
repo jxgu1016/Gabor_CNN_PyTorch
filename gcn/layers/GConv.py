@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn.modules.conv import _ConvNd
-# from torch.autograd.function import once_differentiable # FIXME
+from torch.autograd.function import once_differentiable
 
 from gcn import _C
 
@@ -18,7 +18,7 @@ class GOF_Function(Function):
         return output
 
     @staticmethod
-    # @once_differentiable # FIXME
+    @once_differentiable
     def backward(ctx, grad_output):
         weight, gaborFilterBank = ctx.saved_tensors
         grad_weight = _C.gof_backward(grad_output, gaborFilterBank)
