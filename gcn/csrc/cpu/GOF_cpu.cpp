@@ -52,11 +52,11 @@ void GOFBackward_cpu_kernel(
         for (int k = 0; k < nChannel; k++) {
           T gabortmp = *(gaborFilterBank_data + k * (kW * kH)
                                               + l % (kW * kH));
-          T *target = grad_output_data + i * (nChannel * nInputPlane * nEntry)
+          T target = *(grad_output_data + i * (nChannel * nInputPlane * nEntry)
                                        + k * (nInputPlane * nEntry)
                                        + j * (nEntry)
-                                       + l;
-          *val = *val + *target * gabortmp;
+                                       + l);
+          *val = *val + target * gabortmp;
         }
       }
     }

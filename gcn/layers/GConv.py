@@ -21,8 +21,8 @@ class GOF_Function(Function):
     # @once_differentiable # FIXME
     def backward(ctx, grad_output):
         weight, gaborFilterBank = ctx.saved_tensors
-        grad_input = _C.gof_backward(gaborFilterBank, grad_output)
-        return grad_input, None 
+        grad_weight = _C.gof_backward(grad_output, gaborFilterBank)
+        return grad_weight, None 
 
 class MConv(_ConvNd):
 	'''
