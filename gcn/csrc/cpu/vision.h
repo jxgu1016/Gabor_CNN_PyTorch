@@ -2,9 +2,8 @@
 #include <torch/extension.h>
 
 
-at::Tensor ROIAlign_forward_cpu(const at::Tensor& input,
-                                const at::Tensor& rois,
-                                const float spatial_scale,
-                                const int pooled_height,
-                                const int pooled_width,
-                                const int sampling_ratio);
+at::Tensor GOF_forward_cpu(const at::Tensor& weight, 
+                           const at::Tensor& gaborFilterBank);
+
+at::Tensor GOF_backward_cpu(const at::Tensor& grad_output,
+                            const at::Tensor& gaborFilterBank);
