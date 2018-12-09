@@ -2,7 +2,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from gcn.modules import GConv 
+from gcn.layers import GConv
 
 class GCN(nn.Module):
     def __init__(self, channel=4):

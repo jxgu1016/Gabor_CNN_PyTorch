@@ -118,7 +118,7 @@ def train(epoch):
         if batch_idx % args.print_freq == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item(), prec1))
+                100. * batch_idx / len(train_loader), loss.item(), prec1.item()))
             writer.add_scalar('Loss/Train', loss.item(), iteration)
             writer.add_scalar('Accuracy/Train', prec1, iteration)
     epoch_time = time.time() - st
@@ -133,9 +133,9 @@ def test(epoch):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss.update(F.cross_entropy(output, target, size_average=True).item(), target.size(0))
+            test_loss.update(F.cross_entropy(output, target, reduction='mean').item(), target.size(0))
             prec1, = accuracy(output, target) # test precison in one batch
-            acc.update(prec1, target.size(0))
+            acc.update(prec1.item(), target.size(0))
     print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(test_loss.avg, acc.avg))
     writer.add_scalar('Loss/Test', test_loss.avg, epoch)
     writer.add_scalar('Accuracy/Test', acc.avg, epoch)

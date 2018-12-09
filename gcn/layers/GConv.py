@@ -84,57 +84,32 @@ class GConv(MConv):
 
 	def generate_MFilters(self, nScale, kernel_size):
 		# To generate Gabor Filters
-		self.register_buffer('MFilters',Variable(getGaborFilterBank(nScale, *kernel_size)))
+		self.register_buffer('MFilters', getGaborFilterBank(nScale, *kernel_size))
 
 def getGaborFilterBank(nScale, M, h, w):
-	Kmax = math.pi/2
+	Kmax = math.pi / 2
 	f = math.sqrt(2)
 	sigma = math.pi
-	sqsigma = sigma**2
-	postmean = math.exp(-sqsigma/2)
+	sqsigma = sigma ** 2
+	postmean = math.exp(-sqsigma / 2)
 	if h != 1:
 		gfilter_real = torch.zeros(M, h, w)
 		for i in range(M):
 			theta = i / M * math.pi
-			k = Kmax/f**(nScale-1)
+			k = Kmax / f ** (nScale - 1)
 			xymax = -1e309
 			xymin = 1e309
 			for y in range(h):
 				for x in range(w):
-					y1 = y+1-((h+1)/2)
-					x1 = x+1-((w+1)/2)
-					tmp1 = math.exp(-(k*k*(x1*x1+y1*y1)/(2*sqsigma)))
-					tmp2 = math.cos(k*math.cos(theta)*x1+k*math.sin(theta)*y1)-postmean # For real part
+					y1 = y + 1 - ((h + 1) / 2)
+					x1 = x + 1 - ((w + 1) / 2)
+					tmp1 = math.exp(-(k * k * (x1 * x1 + y1 * y1) / (2 * sqsigma)))
+					tmp2 = math.cos(k * math.cos(theta) * x1 + k * math.sin(theta) * y1) - postmean # For real part
 					# tmp3 = math.sin(k*math.cos(theta)*x1+k*math.sin(theta)*y1) # For imaginary part
-					gfilter_real[i][y][x] = k*k*tmp1*tmp2/sqsigma			
+					gfilter_real[i][y][x] = k * k * tmp1 * tmp2 / sqsigma			
 					xymax = max(xymax, gfilter_real[i][y][x])
 					xymin = min(xymin, gfilter_real[i][y][x])
 			gfilter_real[i] = (gfilter_real[i] - xymin) / (xymax - xymin)
 	else:
 		gfilter_real = torch.ones(M, h, w)
 	return gfilter_real
-
-
-####################################################################
-class my_GOF_Function(nn.Module):
-    def __init__(self):
-        super(my_GOF_Function, self).__init__()
-
-    def forward(self, weight, gof):
-        nOout = weight.size(0)
-        nIn = weight.size(1)
-        nChannel = weight.size(2)
-        kH = weight.size(3)
-        kW = weight.size(4)
-        weight = weight.view(nOout, -1, kH, kW)
-        y = []
-        for i in range(gof.size(0)):
-            Q = weight * gof[i]
-            y.append(Q)
-        index = []
-        group = range(0,(nChannel-1)*nOout+1,nOout)
-        for j in range(nOout):
-            index.extend([k+j for k in group])
-        # print(index)
-        idx = torch.LongTensor(index).cuda() if weight.is_cuda else torch.LongTensor(index)
-        return torch.cat(y, 0).index_select(0, idx)
