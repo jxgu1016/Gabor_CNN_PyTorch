@@ -1,9 +1,8 @@
 from __future__ import division
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 import torch.nn.functional as F
-from gcn.modules import GConv 
+from gcn.layers import GConv
 
 class GCN(nn.Module):
     def __init__(self, channel=4):
@@ -56,16 +55,3 @@ def get_network_fn(name):
     elif name not in networks_zoo:
         raise ValueError('Name of network unknown {}. All networks available:{}'.format(name, networks_zoo.keys()))
     return networks_zoo[name]
-
-def test():
-    a = Variable(torch.randn(2,1,28,28))
-    model = get_network_fn('gcn')
-    # print get_parameters_size(model)/1e6
-    print model
-    b = model(a)
-    print b.size()
-
-
-
-if __name__ == '__main__':
-    test()

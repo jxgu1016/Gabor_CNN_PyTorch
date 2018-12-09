@@ -1,9 +1,4 @@
-#!/bin/bash
-HOME=$(pwd)
-echo "Compiling cuda kernels..."
-cd $HOME/gcn/src
-rm libgcn_kernel.cu.o
-nvcc -c -o libgcn_kernel.cu.o libgcn_kernel.cu -x cu -Xcompiler -fPIC -arch=sm_35
-echo "Installing extension..."
-cd $HOME
-python setup.py clean && python setup.py install
+python setup.py build develop
+
+# or if you are on macOS
+# MACOSX_DEPLOYMENT_TARGET=10.9 CC=clang CXX=clang++ python setup.py build develop

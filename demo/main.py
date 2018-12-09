@@ -3,7 +3,6 @@ import os
 import time
 import argparse
 import torch
-from torch.autograd import Variable
 from torchvision import datasets, transforms
 import torch.optim as optim
 import torch.nn as nn
@@ -75,6 +74,7 @@ test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_si
 # Load model
 model = get_network_fn(args.model)
 print(model)
+
 # Try to visulize the model
 try:
 	visualize_graph(model, writer, input_size=(1, 1, 28, 28))
@@ -87,10 +87,10 @@ optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, we
 scheduler = StepLR(optimizer, step_size=10, gamma=0.5)
 criterion = nn.CrossEntropyLoss()
 
-if use_cuda:
-    torch.cuda.set_device(args.gpu)
-    model = model.cuda()
-    criterion = criterion.cuda()
+device = torch.device("cuda" if use_cuda else "cpu")
+model = model.to(device)
+criterion = criterion.to(device)
+
 # Calculate the total parameters of the model
 print('Model size: {:0.2f} million float parameters'.format(get_parameters_size(model)/1e6))
 
@@ -108,20 +108,18 @@ def train(epoch):
     st = time.time()
     for batch_idx, (data, target) in enumerate(train_loader):
         iteration += 1
-        if use_cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
+        data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        prec1, = accuracy(output.data, target.data)
+        prec1, = accuracy(output, target)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.print_freq == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Accuracy: {:.2f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data[0], prec1))
-            writer.add_scalar('Loss/Train', loss.data[0], iteration)
+                100. * batch_idx / len(train_loader), loss.item(), prec1.item()))
+            writer.add_scalar('Loss/Train', loss.item(), iteration)
             writer.add_scalar('Accuracy/Train', prec1, iteration)
     epoch_time = time.time() - st
     print('Epoch time:{:0.2f}s'.format(epoch_time))
@@ -131,14 +129,13 @@ def test(epoch):
     model.eval()
     test_loss = AverageMeter()
     acc = AverageMeter()
-    for data, target in test_loader:
-        if use_cuda:
-            data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
-        output = model(data)
-        test_loss.update(F.cross_entropy(output, target, size_average=True).data[0], target.data.size(0))
-        prec1, = accuracy(output.data, target.data) # test precison in one batch
-        acc.update(prec1, target.data.size(0))
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            test_loss.update(F.cross_entropy(output, target, reduction='mean').item(), target.size(0))
+            prec1, = accuracy(output, target) # test precison in one batch
+            acc.update(prec1.item(), target.size(0))
     print('\nTest set: Average loss: {:.4f}, Accuracy: {:.2f}%\n'.format(test_loss.avg, acc.avg))
     writer.add_scalar('Loss/Test', test_loss.avg, epoch)
     writer.add_scalar('Accuracy/Test', acc.avg, epoch)
