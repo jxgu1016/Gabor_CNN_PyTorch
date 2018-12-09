@@ -18,22 +18,22 @@ __global__ void GOFForward_cuda_kernel(const int nthreads,
                                        const int nOutputPlane,
                                        const int nInputPlane,
                                        const int nChannel,
-                                       const int nEntry,
+                                       const int kH,
+                                       const int kW,
                                        T* output_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    auto l = index % nEntry;
-    auto j = (index / nEntry) % nInputPlane;
-    auto i = index / nEntry / nInputPlane;
-    T val = *(weight_data + index);
-    for (int k = 0; k < nChannel; k++) {
-      T gabortmp = *(gaborFilterBank_data + k * (nEntry / nChannel)
-                                          + l % (nEntry / nChannel));
-      T *target = output_data + i * (nChannel * nInputPlane * nEntry)
-                              + k * (nInputPlane * nEntry)
-                              + j * (nEntry)
-                              + l;
-      *target = val * gabortmp;
-    }
+    auto w = index % kW;
+    auto h = (index / kW) % kH;
+    auto c = (index / kW / kH) % nChannel;
+    auto in = (index / kW / kH / nChannel) % nInputPlane;
+    auto ori = (index / kW / kH / nChannel / nInputPlane) % nChannel;
+    auto ou = index / kW / kH / nChannel / nInputPlane / nChannel;
+    T val = *(weight_data + (((ou * nInputPlane + in) * nChannel + c) * kH + h) * kW + w);
+    T *target = output_data + index;
+    T gabortmp = *(gaborFilterBank_data + ori * (kH * kW)
+                                        + h * kW
+                                        + w);
+    *target = val * gabortmp;
   }
 }
 
@@ -78,8 +78,8 @@ at::Tensor GOF_forward_cuda(const at::Tensor& weight,
   auto kW = weight.size(4);
 
   auto output = at::empty({nOutputPlane * nChannel, nInputPlane * nChannel, kH, kW}, weight.options());
-  auto nEntry = nChannel * kH * kW;
-  auto output_size = nOutputPlane * nInputPlane * nEntry; // actually not
+  // auto nEntry = nChannel * kH * kW;
+  auto output_size = nOutputPlane * nChannel* nInputPlane * nChannel * kH * kW;
   cudaStream_t stream = at::cuda::getCurrentCUDAStream();
 
   dim3 grid(std::min(THCCeilDiv(output_size, 512L), 4096L));
@@ -98,7 +98,8 @@ at::Tensor GOF_forward_cuda(const at::Tensor& weight,
       nOutputPlane,
       nInputPlane,
       nChannel,
-      nEntry,
+      kH,
+      kW,
       output.data<scalar_t>());
   });
   THCudaCheck(cudaGetLastError());
