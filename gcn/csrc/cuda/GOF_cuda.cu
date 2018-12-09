@@ -63,6 +63,7 @@ __global__ void GOFBackward_cuda_kernel(const int nthreads,
                                    + l);     
 			*val = *val + target * gabortmp;
     }
+  }
 }
 
 at::Tensor GOF_forward_cuda(const at::Tensor& weight,
