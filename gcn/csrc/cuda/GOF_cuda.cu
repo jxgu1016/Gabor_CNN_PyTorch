@@ -39,7 +39,7 @@ __global__ void GOFForward_cuda_kernel(const int nthreads,
 
 template <typename T>
 __global__ void GOFBackward_cuda_kernel(const int nthreads,
-                                       const T* grad_output,
+                                       const T* grad_output_data,
                                        const T* gaborFilterBank_data, 
                                        const int nOutputPlane,
                                        const int nInputPlane,
@@ -57,10 +57,10 @@ __global__ void GOFBackward_cuda_kernel(const int nthreads,
     for (int k = 0; k < nChannel; k++) {
       T gabortmp = *(gaborFilterBank_data + k * (kW * kH)
                                           + l % (kW * kH));
-      T target = *(grad_output + i * (nChannel * nInputPlane * nEntry)
-                                   + k * (nInputPlane * nEntry)
-                                   + j * (nEntry)
-                                   + l);     
+      T target = *(grad_output_data + i * (nChannel * nInputPlane * nEntry)
+                                    + k * (nInputPlane * nEntry)
+                                    + j * (nEntry)
+                                    + l);     
 			*val = *val + target * gabortmp;
     }
   }
