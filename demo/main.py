@@ -50,12 +50,10 @@ iteration = 0
 # Prepare the MNIST dataset
 normalize = transforms.Normalize((0.1307,), (0.3081,))
 train_transform = transforms.Compose([
-    # transforms.Scale(32),
     transforms.ToTensor(),
     normalize,
     ])
 test_transform = transforms.Compose([
-    # transforms.Scale(32),
     transforms.ToTensor(), 
     normalize,
     ])
