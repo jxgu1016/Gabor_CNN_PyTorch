@@ -38,7 +38,7 @@ class MConv(_ConvNd):
 		dilation = _pair(dilation)
 		super(MConv, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), groups, bias)
+            False, _pair(0), groups, bias, padding_mode)
 		self.expand = expand
 		self.M = M
 		self.need_bias = bias
@@ -54,6 +54,12 @@ class MConv(_ConvNd):
 			x = self.do_expanding(x)
 		new_weight = self.GOF_Function(self.weight, self.MFilters)
 		new_bias = self.expand_bias(self.bias) if self.need_bias else self.bias
+		if self.padding_mode == 'circular':
+            expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
+                                (self.padding[0] + 1) // 2, self.padding[0] // 2)
+            return F.conv2d(F.pad(input, expanded_padding, mode='circular'),
+                            self.weight, self.bias, self.stride,
+                            _pair(0), self.dilation, self.groups)
 		return F.conv2d(x, new_weight, new_bias, self.stride,
 				self.padding, self.dilation, self.groups)
 
@@ -78,9 +84,9 @@ class GConv(MConv):
 	Gabor Convolutional Operation Layer
 	'''
 	def __init__(self, in_channels, out_channels, kernel_size, M=4, nScale=3, stride=1,
-					padding=0, dilation=1, groups=1, bias=True, expand=False):
+					padding=0, dilation=1, groups=1, bias=True, expand=False, padding_mode='zeros'):
 		super(GConv, self).__init__(in_channels, out_channels, kernel_size, M, nScale, stride,
-					padding, dilation, groups, bias, expand)
+					padding, dilation, groups, bias, expand, padding_mode)
 
 	def generate_MFilters(self, nScale, kernel_size):
 		# To generate Gabor Filters
