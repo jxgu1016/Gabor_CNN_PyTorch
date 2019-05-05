@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.optim.lr_scheduler import StepLR, MultiStepLR
 import torch.nn.functional as F
 from utils import accuracy, AverageMeter, save_checkpoint, visualize_graph, get_parameters_size
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from net_factory import get_network_fn
 
 

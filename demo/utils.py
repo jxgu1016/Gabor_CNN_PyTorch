@@ -1,6 +1,7 @@
 import shutil
 import torch
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
