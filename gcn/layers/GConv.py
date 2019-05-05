@@ -29,7 +29,7 @@ class MConv(_ConvNd):
 	Baee layer class for modulated convolution
 	'''
 	def __init__(self, in_channels, out_channels, kernel_size, M=4, nScale=3, stride=1,
-					padding=0, dilation=1, groups=1, bias=True, expand=False):
+					padding=0, dilation=1, groups=1, bias=True, expand=False, padding_mode='zeros'):
 		if groups != 1:
 			raise ValueError('Group-conv not supported!')
 		kernel_size = (M,) + _pair(kernel_size)
