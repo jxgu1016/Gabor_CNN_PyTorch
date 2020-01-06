@@ -5,7 +5,7 @@ But all the results in the paper are based on [Torch 7](https://github.com/bczha
 These two implementations are sharing the same infrastructure level code.
 
 ## Requirements
-- PyTorch 1.1.0 (order versions are not supported)
+- PyTorch 1.1.0 (older versions are not supported)
 - torchvision
   
 ## Install
